@@ -8,10 +8,10 @@
 Summary: The Ruby standard for packaging ruby libraries
 Name: rubygems
 Version: 1.3.7
-Release: 4%{?dist}
+Release: 5%{?dist}
 Group: Development/Libraries
 # No GPL version is specified.
-License: Ruby or GPL+
+License: MIT
 URL: http://rubyforge.org/projects/rubygems/
 Source0: http://rubyforge.org/frs/download.php/%{repoid}/rubygems-%{version}.tgz
 Patch0: rubygems-1.3.7-noarch-gemdir.patch
@@ -39,6 +39,16 @@ Provides: ruby(rubygems) = %{version}
 %description
 RubyGems is the Ruby standard for publishing and managing third party
 libraries.
+
+%package 	devel
+Summary:	Macros and development tools for packaging RubyGems
+Group:		Development/Libraries
+License:	Ruby or MIT
+Requires:	%{name} = %{version}-%{release}
+BuildArch:	noarch
+
+%description	devel
+Macros and development tools for packaging RubyGems.
 
 %prep
 %setup -q
@@ -71,6 +81,34 @@ mv %{buildroot}/%{ruby_sitelib}/lib/* %{buildroot}/%{ruby_sitelib}/.
 # FIXME!!
 mkdir -p $RPM_BUILD_ROOT%{gem_home}/{cache,gems,specifications,doc}
 
+# create macros.rubygems
+mkdir -p %{buildroot}%{_sysconfdir}/rpm
+cat >> %{buildroot}%{_sysconfdir}/rpm/macros.rubygems << \EOF
+# The RubyGems root folder.
+%%gem_dir %{gem_home}
+
+# Common gem locations and files.
+%%gem_instdir %%{gem_dir}/gems/%%{gem_name}-%%{version}
+%%gem_libdir %%{gem_instdir}/lib
+%%gem_cache %%{gem_dir}/cache/%%{gem_name}-%%{version}.gem
+%%gem_spec %%{gem_dir}/specifications/%%{gem_name}-%%{version}.gemspec
+%%gem_docdir %%{gem_dir}/doc/%%{gem_name}-%%{version}
+
+# Install gem into appropriate directory.
+# -n<gem_file>      Overrides gem file name for installation.
+# -d<install_dir>   Set installation directory.
+%%gem_install(d:n:) \
+mkdir -p %%{-d*}%%{!?-d:.%%{gem_dir}} \
+\
+CONFIGURE_ARGS="--with-cflags='%%{optflags}' $CONFIGURE_ARGS" \\\
+gem install \\\
+        -V \\\
+        --local \\\
+        --install-dir %%{-d*}%%{!?-d:.%%{gem_dir}} \\\
+        --bindir .%%{_bindir} \\\
+        --force \\\
+        %%{-n*}%%{!?-n:%%{gem_name}-%%{version}.gem}
+EOF
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -89,18 +127,27 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/gem
 %{ruby_sitelib}/*
 
+%files	devel
+%config(noreplace)  %{_sysconfdir}/rpm/macros.rubygems
+
 %changelog
-* Wed Sep 25 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-4
+* Wed Sep 25 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-5
 - Remove regexp backtracing (CVE-2013-4363).
-  - Related: rhbz#1002838.
+  - Related: rhbz#1002839.
 
-* Wed Sep 18 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-3
+* Wed Sep 18 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-4
 - Fix insecure connection to SSL repository (CVE-2012-2125, CVE-2012-2126).
-  - Related: rhbz#1002838.
+  - Related: rhbz#1002839.
 
-* Mon Sep 02 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-2
+* Mon Sep 02 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-3
 - Fix algorithmic complexity vulnerability (CVE-2013-4287).
-  - Resolves: rhbz#1002838.
+  - Resolves: rhbz#1002839.
+
+* Tue Aug 13 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-2
+- Provide -devel package.
+  - Resolves: rhbz#788001
+- Fix license.
+  - Resolves: rhbz#559707
 
 * Mon May 17 2010 Mamoru Tasaka <mtasaka@ioa.s.u-tokyo.ac.jp> - 1.3.7-1
 - Update to 1.3.7, dropping upstreamed patch
