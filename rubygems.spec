@@ -1,20 +1,35 @@
-%define gem_dir %(ruby -rrbconfig -e 'puts File::expand_path(File::join(Config::CONFIG["sitedir"],"..","gems"))')
-%define rb_ver %(ruby -rrbconfig -e 'puts Config::CONFIG["ruby_version"]')
+%define gem_dir %(ruby -rrbconfig -e 'puts File::expand_path(File::join(RbConfig::CONFIG["sitedir"],"..","gems"))')
+%define rb_ver %(ruby -rrbconfig -e 'puts RbConfig::CONFIG["ruby_version"]')
 %define gem_home %{gem_dir}/%{rb_ver}
-%define ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"]')
+%define ruby_sitelib %(ruby -rrbconfig -e 'puts RbConfig::CONFIG["sitelibdir"]')
 
 %define repoid 70696
 
 Summary: The Ruby standard for packaging ruby libraries
 Name: rubygems
 Version: 1.3.7
-Release: 1%{?dist}
+Release: 4%{?dist}
 Group: Development/Libraries
 # No GPL version is specified.
 License: Ruby or GPL+
 URL: http://rubyforge.org/projects/rubygems/
 Source0: http://rubyforge.org/frs/download.php/%{repoid}/rubygems-%{version}.tgz
 Patch0: rubygems-1.3.7-noarch-gemdir.patch
+
+# Fix algorithmic complexity vulnerability (CVE-2013-4287).
+# https://github.com/rubygems/rubygems/issues/626
+Patch1: rubygems-1.8.23.1-CVE-2013-4287-algorithmic-complexity-vulnerability.patch
+# Fix insecure connection to SSL repository (CVE-2012-2125, CVE-2012-2126).
+# https://github.com/rubygems/rubygems/commit/c22a3b705ead93f4cb8282e6dcb2f8f330d74edd
+# NOTE 1: Certificates are omitted from patch due to:
+# https://github.com/rubygems/rubygems/commit/e9388de72ee5953ff061203ad387c98b2154db87
+# Upstream clarification: https://github.com/rubygems/rubygems/issues/654
+# NOTE 2: The ca-bundle.pem is automatically discovered on system path by OpenSLL.
+Patch2: rubygems-1.8.24-CVE-2012-2125-CVE-2012-2126-Insecure-connection-to-SSL-repository.patch
+# Remove regexp backtracing (CVE-2013-4363).
+# https://github.com/rubygems/rubygems/commit/56d1f8c17bc81f0eb354d5099021c498a0be9b51
+Patch3: rubygems-1.8.23.1-CVE-2013-4363-remove-regexp-backtracing.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-root-%(%{__id_u} -n)
 Requires: ruby(abi) = 1.8 ruby-rdoc
 BuildRequires:  ruby ruby-rdoc
@@ -28,6 +43,9 @@ libraries.
 %prep
 %setup -q
 %patch0 -p1 -b .noarch
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 # Some of the library files start with #! which rpmlint doesn't like
 # and doesn't make much sense
@@ -72,6 +90,18 @@ rm -rf $RPM_BUILD_ROOT
 %{ruby_sitelib}/*
 
 %changelog
+* Wed Sep 25 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-4
+- Remove regexp backtracing (CVE-2013-4363).
+  - Related: rhbz#1002838.
+
+* Wed Sep 18 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-3
+- Fix insecure connection to SSL repository (CVE-2012-2125, CVE-2012-2126).
+  - Related: rhbz#1002838.
+
+* Mon Sep 02 2013 Vít Ondruch <vondruch@redhat.com> - 1.3.7-2
+- Fix algorithmic complexity vulnerability (CVE-2013-4287).
+  - Resolves: rhbz#1002838.
+
 * Mon May 17 2010 Mamoru Tasaka <mtasaka@ioa.s.u-tokyo.ac.jp> - 1.3.7-1
 - Update to 1.3.7, dropping upstreamed patch
 
